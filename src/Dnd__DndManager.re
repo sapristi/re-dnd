@@ -151,10 +151,7 @@ module Make = (Context: Context.T) => {
             // From the right bound of the container
             containerGeometry.rect.page.right
             // substract the right border and the padding of the container
-            -. (
-              containerGeometry.borders.right
-              +. containerGeometry.paddings.right
-            )
+            -. (containerGeometry.borders.right +. containerGeometry.paddings.right)
             // substract distance between ghost's right bound and the pointer
             -. (ghostDepartureRect.page.right -. ghostDeparturePoint.page.x)
             // add ghost's width since ghost pushed the right side of the container to the left
@@ -165,9 +162,7 @@ module Make = (Context: Context.T) => {
             // To the top bound of the container
             containerGeometry.rect.page.top
             // add the top border and padding of the container
-            +. (
-              containerGeometry.borders.top +. containerGeometry.paddings.top
-            )
+            +. (containerGeometry.borders.top +. containerGeometry.paddings.top)
             // add distance between ghost's top bound and the pointer
             +. (ghostDeparturePoint.page.y -. ghostDepartureRect.page.top)
             // finally, substract distance from the top of the page
@@ -178,9 +173,7 @@ module Make = (Context: Context.T) => {
             // To the left bound of the container
             containerGeometry.rect.page.left
             // add the left border and padding of the container
-            +. (
-              containerGeometry.borders.left +. containerGeometry.paddings.left
-            )
+            +. (containerGeometry.borders.left +. containerGeometry.paddings.left)
             // add distance between ghost's left bound and the pointer
             +. (ghostDeparturePoint.page.x -. ghostDepartureRect.page.left)
             // finally, substract distance from the left side of the page
@@ -189,10 +182,7 @@ module Make = (Context: Context.T) => {
             // From the bottom bound of the container
             containerGeometry.rect.page.bottom
             // substract the bottom border and padding of the container
-            -. (
-              containerGeometry.borders.bottom
-              +. containerGeometry.paddings.bottom
-            )
+            -. (containerGeometry.borders.bottom +. containerGeometry.paddings.bottom)
             // substract distance between ghost's bottom bound and the pointer
             -. (ghostDepartureRect.page.bottom -. ghostDeparturePoint.page.y)
             // add ghost's height since ghost pushed the bottom side down
@@ -204,8 +194,7 @@ module Make = (Context: Context.T) => {
   };
 
   module MouseSubscriptions = {
-    let onMouseMove =
-        (updatePosition: React.ref(RelativityBag.t(Point.t) => unit), event) => {
+    let onMouseMove = (updatePosition: React.ref(RelativityBag.t(Point.t) => unit), event) => {
       // [%log.debug "MouseMove"; ("", "")];
       Webapi.Dom.(event->MouseEvent.preventDefault);
 
@@ -259,15 +248,11 @@ module Make = (Context: Context.T) => {
   };
 
   module TouchSubscriptions = {
-    let onTouchMove =
-        (updatePosition: React.ref(RelativityBag.t(Point.t) => unit), event) => {
+    let onTouchMove = (updatePosition: React.ref(RelativityBag.t(Point.t) => unit), event) => {
       let event = event->Events.Touch.castEventToTouchEvent;
       let touch =
         Webapi.Dom.(
-          event
-          ->TouchEvent.touches
-          ->Events.Touch.castDomTouchListToTouchArray
-          ->Array.getUnsafe(0)
+          event->TouchEvent.touches->Events.Touch.castDomTouchListToTouchArray->Array.getUnsafe(0)
         );
 
       // NOTE: Chrome doesn't allow preventDefault anymore: https://www.chromestatus.com/features/5093566007214080
@@ -319,74 +304,39 @@ module Make = (Context: Context.T) => {
         ~onReorder: option(ReorderResult.t(Item.t, Container.t)) => unit,
         ~children,
       ) => {
-    let items:
-      React.ref(
-        Map.t(
-          Item.t,
-          ItemBag.t(Item.t, Container.t),
-          ComparableItem.identity,
-        ),
-      ) =
+    let items: React.ref(Map.t(Item.t, ItemBag.t(Item.t, Container.t), ComparableItem.identity)) =
       React.useRef(Map.make(~id=(module ComparableItem)));
 
     let containers:
       React.ref(
-        Map.t(
-          Container.t,
-          ContainerBag.t(Item.t, Container.t),
-          ComparableContainer.identity,
-        ),
+        Map.t(Container.t, ContainerBag.t(Item.t, Container.t), ComparableContainer.identity),
       ) =
       React.useRef(Map.make(~id=(module ComparableContainer)));
 
     let scroll: React.ref(option(Scroll.t)) = React.useRef(None);
     let viewport: React.ref(option(Dimensions.t)) = React.useRef(None);
 
-    let focusTargetToRestore: React.ref(option(Dom.htmlElement)) =
-      React.useRef(None);
+    let focusTargetToRestore: React.ref(option(Dom.htmlElement)) = React.useRef(None);
 
-    let scheduledWindowScrollFrameId: React.ref(option(Webapi.rafId)) =
-      React.useRef(None);
-    let scheduledScrollableElementScrollFrameId:
-      React.ref(option(Webapi.rafId)) =
+    let scheduledWindowScrollFrameId: React.ref(option(Webapi.rafId)) = React.useRef(None);
+    let scheduledScrollableElementScrollFrameId: React.ref(option(Webapi.rafId)) =
       React.useRef(None);
 
     let updateGhostPosition =
-      React.useRef(_point =>
-        [%log.warn "UpdateGhostPositionNotSet"; ("Point", _point)]
-      );
+      React.useRef(_point => [%log.warn "UpdateGhostPositionNotSet"; ("Point", _point)]);
     let updateScrollPosition =
-      React.useRef(_ghost =>
-        [%log.warn "UpdateScrollPositionNotSet"; ("Ghost", _ghost)]
-      );
+      React.useRef(_ghost => [%log.warn "UpdateScrollPositionNotSet"; ("Ghost", _ghost)]);
     let invalidateLayout =
-      React.useRef(_ghost =>
-        [%log.warn "InvalidateLayoutNotSet"; ("Ghost", _ghost)]
-      );
-    let startDropping =
-      React.useRef(() => [%log.warn "StartDroppingNotSet"; ("", "")]);
-    let cancelDrag =
-      React.useRef(() => [%log.warn "CancelDragNotSet"; ("", "")]);
+      React.useRef(_ghost => [%log.warn "InvalidateLayoutNotSet"; ("Ghost", _ghost)]);
+    let startDropping = React.useRef(() => [%log.warn "StartDroppingNotSet"; ("", "")]);
+    let cancelDrag = React.useRef(() => [%log.warn "CancelDragNotSet"; ("", "")]);
 
     let (state, dispatch) =
       React.useReducer(
         (state, action) =>
           switch (action) {
-          | CollectEntries(
-              itemId,
-              containerId,
-              startPoint,
-              currentPoint,
-              interaction,
-            ) => {
-              status:
-                Collecting(
-                  itemId,
-                  containerId,
-                  startPoint,
-                  currentPoint,
-                  interaction,
-                ),
+          | CollectEntries(itemId, containerId, startPoint, currentPoint, interaction) => {
+              status: Collecting(itemId, containerId, startPoint, currentPoint, interaction),
               prevStatus: state.status,
             }
           | StartDragging(ghost, subscriptions) => {
@@ -410,15 +360,11 @@ module Make = (Context: Context.T) => {
                 switch (ghost.targetContainer) {
                 | None =>
                   [%log.debug "StartDropping::NoTargetContainer"; ("", "")];
-                  let container =
-                    containers.current->Map.getExn(ghost.originalContainer);
+                  let container = containers.current->Map.getExn(ghost.originalContainer);
                   let scrollableDelta =
                     switch (container.scrollable) {
                     | Some(scrollable) =>
-                      Delta.{
-                        x: scrollable.scroll.delta.x,
-                        y: scrollable.scroll.delta.y,
-                      }
+                      Delta.{x: scrollable.scroll.delta.x, y: scrollable.scroll.delta.y}
                     | None => Delta.{x: 0., y: 0.}
                     };
                   let nextGhost = {
@@ -431,22 +377,17 @@ module Make = (Context: Context.T) => {
                   };
                   (nextGhost, None);
 
-                | Some(targetContainerId)
-                    when ghost.targetingOriginalContainer =>
+                | Some(targetContainerId) when ghost.targetingOriginalContainer =>
                   [%log.debug
                     "StartDropping::TargetingOriginalContainer";
                     ("ContainerId", targetContainerId)
                   ];
-                  let container =
-                    containers.current->Map.getExn(targetContainerId);
+                  let container = containers.current->Map.getExn(targetContainerId);
                   let scroll = scroll.current->Option.getExn;
                   let scrollableDelta =
                     switch (container.scrollable) {
                     | Some(scrollable) =>
-                      Delta.{
-                        x: scrollable.scroll.delta.x,
-                        y: scrollable.scroll.delta.y,
-                      }
+                      Delta.{x: scrollable.scroll.delta.x, y: scrollable.scroll.delta.y}
                     | None => Delta.{x: 0., y: 0.}
                     };
 
@@ -470,30 +411,16 @@ module Make = (Context: Context.T) => {
                   let before:
                     option(
                       [
-                        | `FirstOmegaItemFound(
-                            ItemBag.t(Item.t, Container.t),
-                          )
-                        | `NextItemAfterLastAlphaFound(
-                            ItemBag.t(Item.t, Container.t),
-                          )
-                        | `SearchingForLastAlphaItem(
-                            ItemBag.t(Item.t, Container.t),
-                          )
+                        | `FirstOmegaItemFound(ItemBag.t(Item.t, Container.t))
+                        | `NextItemAfterLastAlphaFound(ItemBag.t(Item.t, Container.t))
+                        | `SearchingForLastAlphaItem(ItemBag.t(Item.t, Container.t))
                       ],
                     ) =
                     items->Array.reduce(None, (res, item) =>
                       switch (res, item.shift) {
-                      | (
-                          Some(
-                            `FirstOmegaItemFound(_) |
-                            `NextItemAfterLastAlphaFound(_),
-                          ),
-                          _,
-                        ) => res
-                      | (None, Some(Omega)) =>
-                        `FirstOmegaItemFound(item)->Some
-                      | (None, Some(Alpha)) =>
-                        `SearchingForLastAlphaItem(item)->Some
+                      | (Some(`FirstOmegaItemFound(_) | `NextItemAfterLastAlphaFound(_)), _) => res
+                      | (None, Some(Omega)) => `FirstOmegaItemFound(item)->Some
+                      | (None, Some(Alpha)) => `SearchingForLastAlphaItem(item)->Some
                       | (Some(`SearchingForLastAlphaItem(_)), Some(Alpha)) =>
                         `SearchingForLastAlphaItem(item)->Some
                       | (Some(`SearchingForLastAlphaItem(_)), None) =>
@@ -535,12 +462,7 @@ module Make = (Context: Context.T) => {
                             ~ghostDeparturePoint=ghost.departurePoint,
                           ),
                       },
-                      Some(
-                        ReorderResult.SameContainer(
-                          ghost.itemId,
-                          Before(item.id),
-                        ),
-                      ),
+                      Some(ReorderResult.SameContainer(ghost.itemId, Before(item.id))),
                     );
 
                   | Some(`SearchingForLastAlphaItem(item)) =>
@@ -594,16 +516,12 @@ module Make = (Context: Context.T) => {
                   };
 
                 | Some(targetContainerId) =>
-                  let container =
-                    containers.current->Map.getExn(targetContainerId);
+                  let container = containers.current->Map.getExn(targetContainerId);
                   let scroll = scroll.current->Option.getExn;
                   let scrollableDelta =
                     switch (container.scrollable) {
                     | Some(scrollable) =>
-                      Delta.{
-                        x: scrollable.scroll.delta.x,
-                        y: scrollable.scroll.delta.y,
-                      }
+                      Delta.{x: scrollable.scroll.delta.x, y: scrollable.scroll.delta.y}
                     | None => Delta.{x: 0., y: 0.}
                     };
 
@@ -706,13 +624,7 @@ module Make = (Context: Context.T) => {
                               ~ghostDeparturePoint=ghost.departurePoint,
                             ),
                         },
-                        Some(
-                          ReorderResult.NewContainer(
-                            ghost.itemId,
-                            targetContainerId,
-                            Last,
-                          ),
-                        ),
+                        Some(ReorderResult.NewContainer(ghost.itemId, targetContainerId, Last)),
                       );
                     | None =>
                       [%log.debug
@@ -725,20 +637,13 @@ module Make = (Context: Context.T) => {
                           delta:
                             Layout.calculateDeltaToLandGhostOnEmptyContainer(
                               ~axis=ghost.axis,
-                              ~containerGeometry=
-                                container.geometry->Option.getExn,
+                              ~containerGeometry=container.geometry->Option.getExn,
                               ~ghostDimensions=ghost.dimensions,
                               ~ghostDepartureRect=ghost.departureRect,
                               ~ghostDeparturePoint=ghost.departurePoint,
                             ),
                         },
-                        Some(
-                          ReorderResult.NewContainer(
-                            ghost.itemId,
-                            targetContainerId,
-                            Last,
-                          ),
-                        ),
+                        Some(ReorderResult.NewContainer(ghost.itemId, targetContainerId, Last)),
                       );
                     }
                   };
@@ -753,8 +658,7 @@ module Make = (Context: Context.T) => {
           | CancelDrag =>
             switch (state.status) {
             | Dragging(ghost, _) =>
-              let container =
-                containers.current->Map.getExn(ghost.originalContainer);
+              let container = containers.current->Map.getExn(ghost.originalContainer);
 
               let nextGhost =
                 switch (container.scrollable) {
@@ -836,8 +740,7 @@ module Make = (Context: Context.T) => {
 
     let disposeContainer =
       React.useCallback1(
-        containerId =>
-          containers.current = containers.current->Map.remove(containerId),
+        containerId => containers.current = containers.current->Map.remove(containerId),
         [|containers|],
       );
 
@@ -850,14 +753,7 @@ module Make = (Context: Context.T) => {
           currentPoint: RelativityBag.t(Point.t),
           interaction: [ | `Mouse | `Touch],
         ) =>
-        CollectEntries(
-          itemId,
-          containerId,
-          startPoint,
-          currentPoint,
-          interaction,
-        )
-        ->dispatch
+        CollectEntries(itemId, containerId, startPoint, currentPoint, interaction)->dispatch
       );
 
     let prepareDrag =
@@ -878,19 +774,11 @@ module Make = (Context: Context.T) => {
           let scrollPosition = Scrollable.Window.getScrollPosition();
 
           let rect = item.element->HtmlElement.getBoundingClientRect;
-          let style =
-            window->Window.getComputedStyle(
-                      item.element->Web.htmlElementToElement,
-                      _,
-                    );
+          let style = window->Window.getComputedStyle(item.element->Web.htmlElementToElement, _);
 
           let viewportRect = rect->Geometry.getViewportRect;
-          let pageRect =
-            viewportRect->Geometry.getPageRectFromViewportRect(
-              scrollPosition,
-            );
-          let currentRect =
-            RelativityBag.{page: pageRect, viewport: viewportRect};
+          let pageRect = viewportRect->Geometry.getPageRectFromViewportRect(scrollPosition);
+          let currentRect = RelativityBag.{page: pageRect, viewport: viewportRect};
 
           let ghost =
             Ghost.{
@@ -901,11 +789,7 @@ module Make = (Context: Context.T) => {
               axis: container.axis,
               lockAxis: container.lockAxis,
               element: item.element,
-              direction:
-                Geometry.getDirection(
-                  ~was=startPoint.page.y,
-                  ~is=currentPoint.page.y,
-                ),
+              direction: Geometry.getDirection(~was=startPoint.page.y, ~is=currentPoint.page.y),
               dimensions: rect->Geometry.getDimensions,
               margins: style->Geometry.getMargins,
               borders: style->Geometry.getBorders,
@@ -922,126 +806,65 @@ module Make = (Context: Context.T) => {
           let subscriptions = {
             switch (interaction) {
             | `Mouse =>
-              let onMouseMove =
-                MouseSubscriptions.onMouseMove(updateGhostPosition);
+              let onMouseMove = MouseSubscriptions.onMouseMove(updateGhostPosition);
               let onMouseUp = MouseSubscriptions.onMouseUp(startDropping);
               let onKeyDown = MouseSubscriptions.onKeyDown(cancelDrag);
               let onResize = MouseSubscriptions.onResize(cancelDrag);
-              let onVisibilityChange =
-                MouseSubscriptions.onVisibilityChange(cancelDrag);
+              let onVisibilityChange = MouseSubscriptions.onVisibilityChange(cancelDrag);
 
               Subscriptions.{
                 install: () => {
-                  [%log.debug
-                    "MouseSubscriptions::SubscriptionsInstalled";
-                    ("ItemId", itemId)
-                  ];
+                  [%log.debug "MouseSubscriptions::SubscriptionsInstalled"; ("ItemId", itemId)];
                   Window.addMouseMoveEventListener(onMouseMove, window);
                   Window.addMouseUpEventListener(onMouseUp, window);
-                  HtmlElement.addKeyDownEventListener(
-                    onKeyDown,
-                    ghost.element,
-                  );
+                  HtmlElement.addKeyDownEventListener(onKeyDown, ghost.element);
                   Window.addEventListener("resize", onResize, window);
-                  Window.addEventListener(
-                    "visibilitychange",
-                    onVisibilityChange,
-                    window,
-                  );
+                  Window.addEventListener("visibilitychange", onVisibilityChange, window);
                 },
                 drop: () => {
-                  [%log.debug
-                    "MouseSubscriptions::SubscriptionsDropped";
-                    ("ItemId", itemId)
-                  ];
+                  [%log.debug "MouseSubscriptions::SubscriptionsDropped"; ("ItemId", itemId)];
                   Window.removeMouseMoveEventListener(onMouseMove, window);
                   Window.removeMouseUpEventListener(onMouseUp, window);
-                  HtmlElement.removeKeyDownEventListener(
-                    onKeyDown,
-                    ghost.element,
-                  );
+                  HtmlElement.removeKeyDownEventListener(onKeyDown, ghost.element);
                   Window.removeEventListener("resize", onResize, window);
-                  Window.removeEventListener(
-                    "visibilitychange",
-                    onVisibilityChange,
-                    window,
-                  );
+                  Window.removeEventListener("visibilitychange", onVisibilityChange, window);
                 },
               };
             | `Touch =>
-              let onTouchMove =
-                TouchSubscriptions.onTouchMove(updateGhostPosition);
+              let onTouchMove = TouchSubscriptions.onTouchMove(updateGhostPosition);
               let onTouchEnd = TouchSubscriptions.onTouchEnd(startDropping);
               let onContextMenu = TouchSubscriptions.onContextMenu;
-              let onOrientationChange =
-                TouchSubscriptions.onOrientationChange(cancelDrag);
-              let onVisibilityChange =
-                TouchSubscriptions.onVisibilityChange(cancelDrag);
+              let onOrientationChange = TouchSubscriptions.onOrientationChange(cancelDrag);
+              let onVisibilityChange = TouchSubscriptions.onVisibilityChange(cancelDrag);
 
               Subscriptions.{
                 install: () => {
-                  [%log.debug
-                    "TouchSubscriptions::SubscriptionsInstalled";
-                    ("ItemId", itemId)
-                  ];
+                  [%log.debug "TouchSubscriptions::SubscriptionsInstalled"; ("ItemId", itemId)];
                   Window.addEventListener("touchmove", onTouchMove, window);
                   Window.addEventListener("touchend", onTouchEnd, window);
-                  Window.addEventListener(
-                    "contextmenu",
-                    onContextMenu,
-                    window,
-                  );
-                  Window.addEventListener(
-                    "orientationchange",
-                    onOrientationChange,
-                    window,
-                  );
-                  Window.addEventListener(
-                    "visibilitychange",
-                    onVisibilityChange,
-                    window,
-                  );
+                  Window.addEventListener("contextmenu", onContextMenu, window);
+                  Window.addEventListener("orientationchange", onOrientationChange, window);
+                  Window.addEventListener("visibilitychange", onVisibilityChange, window);
                 },
                 drop: () => {
-                  [%log.debug
-                    "TouchSubscriptions::SubscriptionsDropped";
-                    ("ItemId", itemId)
-                  ];
-                  Window.removeEventListener(
-                    "touchmove",
-                    onTouchMove,
-                    window,
-                  );
+                  [%log.debug "TouchSubscriptions::SubscriptionsDropped"; ("ItemId", itemId)];
+                  Window.removeEventListener("touchmove", onTouchMove, window);
                   Window.removeEventListener("touchend", onTouchEnd, window);
-                  Window.removeEventListener(
-                    "contextmenu",
-                    onContextMenu,
-                    window,
-                  );
-                  Window.removeEventListener(
-                    "orientationchange",
-                    onOrientationChange,
-                    window,
-                  );
-                  Window.removeEventListener(
-                    "visibilitychange",
-                    onVisibilityChange,
-                    window,
-                  );
+                  Window.removeEventListener("contextmenu", onContextMenu, window);
+                  Window.removeEventListener("orientationchange", onOrientationChange, window);
+                  Window.removeEventListener("visibilitychange", onVisibilityChange, window);
                 },
               };
             };
           };
 
           items.current =
-            items.current
-            ->Map.map(item => {...item, geometry: item.getGeometry()->Some});
+            items.current->Map.map(item => {...item, geometry: item.getGeometry()->Some});
 
           containers.current =
             containers.current
             ->Map.map(container => {
-                let (geometry, scrollable) =
-                  container.getGeometryAndScrollable();
+                let (geometry, scrollable) = container.getGeometryAndScrollable();
                 {...container, geometry: geometry->Some, scrollable};
               });
 
@@ -1100,23 +923,8 @@ module Make = (Context: Context.T) => {
     React.useEffect2(
       () =>
         switch (state.prevStatus, state.status) {
-        | (
-            StandBy,
-            Collecting(
-              itemId,
-              containerId,
-              startPoint,
-              currentPoint,
-              interaction,
-            ),
-          ) =>
-          prepareDrag(
-            itemId,
-            containerId,
-            startPoint,
-            currentPoint,
-            interaction,
-          );
+        | (StandBy, Collecting(itemId, containerId, startPoint, currentPoint, interaction)) =>
+          prepareDrag(itemId, containerId, startPoint, currentPoint, interaction);
           None;
         | (Collecting(_), Dragging(ghost, subscriptions)) =>
           subscriptions.install();
@@ -1134,9 +942,7 @@ module Make = (Context: Context.T) => {
           ->ignore;
           None;
         | (Dropping(ghost, _), StandBy) =>
-          focusTargetToRestore.current
-          ->Option.map(Webapi.Dom.HtmlElement.focus)
-          ->ignore;
+          focusTargetToRestore.current->Option.map(Webapi.Dom.HtmlElement.focus)->ignore;
           focusTargetToRestore.current = None;
 
           items.current = Map.make(~id=(module ComparableItem));
@@ -1199,25 +1005,17 @@ module Make = (Context: Context.T) => {
                       | Some(scrollable) =>
                         Rect.{
                           top:
-                            scrollable.geometry.rect.page.top
-                            > geometry.rect.page.top
-                              ? scrollable.geometry.rect.page.top
-                              : geometry.rect.page.top,
+                            scrollable.geometry.rect.page.top > geometry.rect.page.top
+                              ? scrollable.geometry.rect.page.top : geometry.rect.page.top,
                           bottom:
-                            scrollable.geometry.rect.page.bottom
-                            < geometry.rect.page.bottom
-                              ? scrollable.geometry.rect.page.bottom
-                              : geometry.rect.page.bottom,
+                            scrollable.geometry.rect.page.bottom < geometry.rect.page.bottom
+                              ? scrollable.geometry.rect.page.bottom : geometry.rect.page.bottom,
                           left:
-                            scrollable.geometry.rect.page.left
-                            > geometry.rect.page.left
-                              ? scrollable.geometry.rect.page.left
-                              : geometry.rect.page.left,
+                            scrollable.geometry.rect.page.left > geometry.rect.page.left
+                              ? scrollable.geometry.rect.page.left : geometry.rect.page.left,
                           right:
-                            scrollable.geometry.rect.page.right
-                            < geometry.rect.page.right
-                              ? scrollable.geometry.rect.page.right
-                              : geometry.rect.page.right,
+                            scrollable.geometry.rect.page.right < geometry.rect.page.right
+                              ? scrollable.geometry.rect.page.right : geometry.rect.page.right,
                         }
                       };
 
@@ -1235,8 +1033,7 @@ module Make = (Context: Context.T) => {
             let targetingOriginalContainer =
               switch (targetContainer) {
               | None => true
-              | Some(targetContainer)
-                  when targetContainer->Container.eq(ghost.originalContainer) =>
+              | Some(targetContainer) when targetContainer->Container.eq(ghost.originalContainer) =>
                 true
               | Some(_) => false
               };
@@ -1246,21 +1043,15 @@ module Make = (Context: Context.T) => {
                 page:
                   Rect.{
                     top:
-                      ghost.currentRect.page.top
-                      +. nextPoint.page.y
-                      -. ghost.currentPoint.page.y,
+                      ghost.currentRect.page.top +. nextPoint.page.y -. ghost.currentPoint.page.y,
                     bottom:
                       ghost.currentRect.page.bottom
                       +. nextPoint.page.y
                       -. ghost.currentPoint.page.y,
                     left:
-                      ghost.currentRect.page.left
-                      +. nextPoint.page.x
-                      -. ghost.currentPoint.page.x,
+                      ghost.currentRect.page.left +. nextPoint.page.x -. ghost.currentPoint.page.x,
                     right:
-                      ghost.currentRect.page.right
-                      +. nextPoint.page.x
-                      -. ghost.currentPoint.page.x,
+                      ghost.currentRect.page.right +. nextPoint.page.x -. ghost.currentPoint.page.x,
                   },
                 viewport:
                   Rect.{
@@ -1327,8 +1118,7 @@ module Make = (Context: Context.T) => {
         (ghost: Ghost.t(Item.t, Container.t)) => {
           let scrollable =
             containers.current
-            ->Map.reduce(
-                None, (scrollable: option(ScrollableElement.t), _, container) =>
+            ->Map.reduce(None, (scrollable: option(ScrollableElement.t), _, container) =>
                 switch (scrollable, container.scrollable) {
                 | (Some(scrollable), Some(scrollable')) =>
                   if (Geometry.contains(
@@ -1340,8 +1130,7 @@ module Make = (Context: Context.T) => {
                     Some(scrollable');
                   }
                 | (None, Some(scrollable')) =>
-                  if (ghost.currentPoint.page
-                      ->Geometry.isWithin(scrollable'.geometry.rect.page)) {
+                  if (ghost.currentPoint.page->Geometry.isWithin(scrollable'.geometry.rect.page)) {
                     Some(scrollable');
                   } else {
                     None;
@@ -1398,10 +1187,7 @@ module Make = (Context: Context.T) => {
                           -. currentScroll.current.y,
                       },
                     viewport:
-                      Point.{
-                        x: ghost.currentPoint.viewport.x,
-                        y: ghost.currentPoint.viewport.y,
-                      },
+                      Point.{x: ghost.currentPoint.viewport.x, y: ghost.currentPoint.viewport.y},
                   };
 
                 let delta =
@@ -1421,9 +1207,7 @@ module Make = (Context: Context.T) => {
                             ->Option.map(geometry =>
                                 {
                                   ...geometry,
-                                  rect:
-                                    geometry.rect
-                                    ->Geometry.shiftViewportRect(delta),
+                                  rect: geometry.rect->Geometry.shiftViewportRect(delta),
                                 }
                               ),
                           scrollable:
@@ -1431,9 +1215,7 @@ module Make = (Context: Context.T) => {
                               ...scrollable,
                               geometry: {
                                 ...scrollable.geometry,
-                                rect:
-                                  scrollable.geometry.rect
-                                  ->Geometry.shiftViewportRect(delta),
+                                rect: scrollable.geometry.rect->Geometry.shiftViewportRect(delta),
                               },
                             }),
                         }
@@ -1444,9 +1226,7 @@ module Make = (Context: Context.T) => {
                             ->Option.map(geometry =>
                                 {
                                   ...geometry,
-                                  rect:
-                                    geometry.rect
-                                    ->Geometry.shiftViewportRect(delta),
+                                  rect: geometry.rect->Geometry.shiftViewportRect(delta),
                                 }
                               ),
                         }
@@ -1468,8 +1248,7 @@ module Make = (Context: Context.T) => {
 
             scheduledScrollableElementScrollFrameId.current =
               requestElementScroll(scrollable => {
-                let nextScrollPosition =
-                  scrollable.element->Scrollable.Element.getScrollPosition;
+                let nextScrollPosition = scrollable.element->Scrollable.Element.getScrollPosition;
 
                 let nextScroll =
                   Scroll.{
@@ -1492,21 +1271,15 @@ module Make = (Context: Context.T) => {
                   containers.current
                   ->Map.map(container =>
                       switch (container.scrollable) {
-                      | Some(scrollable')
-                          when scrollable'.element === scrollable.element => {
+                      | Some(scrollable') when scrollable'.element === scrollable.element => {
                           ...container,
                           geometry:
                             container.geometry
                             ->Option.map(geometry =>
-                                {
-                                  ...geometry,
-                                  rect:
-                                    geometry.rect->Geometry.shiftRects(delta),
-                                }
+                                {...geometry, rect: geometry.rect->Geometry.shiftRects(delta)}
                               ),
 
-                          scrollable:
-                            Some({...scrollable, scroll: nextScroll}),
+                          scrollable: Some({...scrollable, scroll: nextScroll}),
                         }
                       | Some(scrollable')
                           when
@@ -1518,11 +1291,7 @@ module Make = (Context: Context.T) => {
                           geometry:
                             container.geometry
                             ->Option.map(geometry =>
-                                {
-                                  ...geometry,
-                                  rect:
-                                    geometry.rect->Geometry.shiftRects(delta),
-                                }
+                                {...geometry, rect: geometry.rect->Geometry.shiftRects(delta)}
                               ),
                         }
                       | Some(_)
@@ -1545,16 +1314,13 @@ module Make = (Context: Context.T) => {
           let (nextItems, animate) =
             switch (ghost.targetContainer) {
             | None =>
-              let items =
-                items.current->Map.map(item => {...item, shift: None});
+              let items = items.current->Map.map(item => {...item, shift: None});
               (items, []);
             | Some(targetContainerId) =>
-              let container =
-                containers.current->Map.getExn(targetContainerId);
+              let container = containers.current->Map.getExn(targetContainerId);
 
               items.current
-              ->Map.reduce(
-                  (items.current, []), ((items, animate), id, item) =>
+              ->Map.reduce((items.current, []), ((items, animate), id, item) =>
                   switch (item.containerId) {
                   | itemContainerId
                       when
@@ -1591,20 +1357,14 @@ module Make = (Context: Context.T) => {
 
                     switch (item.shift, currentStatus, initialStatus) {
                     // Dragging this one, no changes required
-                    | (_, _, _) when item.id->Item.eq(ghost.itemId) => (
-                        items,
-                        animate,
-                      )
+                    | (_, _, _) when item.id->Item.eq(ghost.itemId) => (items, animate)
 
                     // This one is in the middle of transition, ignoring
                     | (_, _, _) when item.animating => (items, animate)
 
                     // Ghost is before item but initially was after:
                     // item is already Omega, so ignoring
-                    | (Some(Omega), `GhostIsBefore, `GhostWasAfter) => (
-                        items,
-                        animate,
-                      )
+                    | (Some(Omega), `GhostIsBefore, `GhostWasAfter) => (items, animate)
 
                     // Ghost is before item but initially was after:
                     // item is not Omega yet, so pushing it
@@ -1623,10 +1383,7 @@ module Make = (Context: Context.T) => {
 
                     // Ghost is after item but initially was before:
                     // item is already Alpha, so ignoring
-                    | (Some(Alpha), `GhostIsAfter, `GhostWasBefore) => (
-                        items,
-                        animate,
-                      )
+                    | (Some(Alpha), `GhostIsAfter, `GhostWasBefore) => (items, animate)
 
                     // Ghost is after item but initially was before:
                     // item is not Alpha yet, so pushing it
@@ -1691,10 +1448,7 @@ module Make = (Context: Context.T) => {
                     | (true, _, _) => (items, animate)
 
                     // Ghost is before item: item is already Omega, so ignoring
-                    | (false, Some(Omega), `GhostIsBefore) => (
-                        items,
-                        animate,
-                      )
+                    | (false, Some(Omega), `GhostIsBefore) => (items, animate)
 
                     // Ghost is before item: item is not Omega yet, so pushing it
                     | (false, Some(Alpha) | None, `GhostIsBefore) => (
@@ -1711,10 +1465,7 @@ module Make = (Context: Context.T) => {
                       )
 
                     // Ghost is after item: item is already Alpha, so ignoring
-                    | (false, Some(Alpha), `GhostIsAfter) => (
-                        items,
-                        animate,
-                      )
+                    | (false, Some(Alpha), `GhostIsAfter) => (items, animate)
 
                     // Ghost is after item: item is not Alpha yet, so pushing it
                     | (false, Some(Omega) | None, `GhostIsAfter) => (
@@ -1735,11 +1486,7 @@ module Make = (Context: Context.T) => {
                   | _ => (
                       items->Map.set(
                         id,
-                        {
-                          ...item,
-                          shift: None,
-                          targetIndex: item.originalIndex,
-                        },
+                        {...item, shift: None, targetIndex: item.originalIndex},
                       ),
                       animate,
                     )
@@ -1785,11 +1532,7 @@ module Make = (Context: Context.T) => {
           | None => ()
           };
         },
-        (
-          state.status,
-          scheduledWindowScrollFrameId,
-          scheduledScrollableElementScrollFrameId,
-        ),
+        (state.status, scheduledWindowScrollFrameId, scheduledScrollableElementScrollFrameId),
       );
 
     startDropping.current =
@@ -1805,8 +1548,7 @@ module Make = (Context: Context.T) => {
       React.useCallback2(
         () => {
           prepareDrop();
-          items.current =
-            items.current->Map.map(item => {...item, shift: None});
+          items.current = items.current->Map.map(item => {...item, shift: None});
           CancelDrag->dispatch;
         },
         (items, prepareDrop),
@@ -1816,10 +1558,7 @@ module Make = (Context: Context.T) => {
     //       https://bugs.webkit.org/show_bug.cgi?id=184250
     React.useEffect1(
       () => {
-        [%log.debug
-          "AddTouchMoveWebkitEventListener";
-          ("Status", state.status)
-        ];
+        [%log.debug "AddTouchMoveWebkitEventListener"; ("Status", state.status)];
         let preventTouchMoveInWebkit = event =>
           Webapi.Dom.(
             switch (state.status) {
@@ -1834,10 +1573,7 @@ module Make = (Context: Context.T) => {
 
         Some(
           () => {
-            [%log.debug
-              "RemoveTouchMoveWebkitEventListener";
-              ("Status", state.status)
-            ];
+            [%log.debug "RemoveTouchMoveWebkitEventListener"; ("Status", state.status)];
             preventTouchMoveInWebkit->Events.unsubscribeFromTouchMove;
           },
         );
@@ -1860,7 +1596,8 @@ module Make = (Context: Context.T) => {
         registerContainer,
         disposeItem,
         disposeContainer,
-        getItemShift: itemId => items.current->Map.getExn(itemId).shift,
+        getItemShift: itemId =>
+          items.current->Map.get(itemId)->Option.mapWithDefault(None, item => item.shift),
         startDragging: collectEntries,
       }>
       children
